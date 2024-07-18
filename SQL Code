@@ -1,0 +1,80 @@
+##1 Provide a list of products with base price greater than 500 and that are featured in promo type 'BOGOF'.
+select 
+p.product_code,
+p.product_name
+from [dbo].[dim_products] as p
+join  [dbo].[fact_events] as f
+on p.product_code=f.product_code
+where f.base_price > 500 and f.promo_type ='bogof'
+group by p.product_code,p.product_name;
+
+##2 Generate a report that provides an overview of the number of stores in each city. The results will be sorted in descending order of store counts allowing us to identify the cities with the highest stores presence.
+select 
+city,
+count (*) as Store_Count
+from [dbo].[dim_stores]
+group by city
+order by Store_Count desc ;
+
+##3 Generate a report that displays each campaign along with the total revenue generated before and after the campaign?
+select c.campaign_name, 
+concat((sum(f.base_price * f.[quantity_sold(after_promo)]) / 1000000 ),'M')as total_after_promo,
+concat ((sum( f.base_price * f.[quantity_sold(before_promo)] ) /1000000),'M') as total_before_promo
+from [dbo].[dim_campaigns] as c
+join [dbo].[fact_events] as f
+on c.campaign_id= f.campaign_id
+group by c.campaign_name;
+
+##4 Produce a report that calculates Incremental sold quantity(ISU%) for each category during the Diwali campaign. Additionally provide rankings for the categories based on their ISU%.
+with cte as(
+select 
+d.category, ( (sum( f.[quantity_sold(after_promo)])- sum(f.[quantity_sold(before_promo)]) ) / sum(f.[quantity_sold(before_promo)]) ) * 100 as ISU_per
+from [dbo].[fact_events] as f
+join  [dbo].[dim_products] as d
+on f.product_code=d.product_code
+group by d.category )
+select *, dense_rank( ) over( order by ISU_per desc) as ranking
+from cte 
+
+##5 Create a report featuring the Top 5 products, ranked by Incremental Revenue Percentage(IR%) across all campaigns.
+select top (5) with ties s.store_id, s.city,
+(sum (f.base_price * f.[quantity_sold(after_promo)])-sum( f.base_price * f.[quantity_sold(before_promo)]))   as IR
+from [dbo].[fact_events] as f
+join [dbo].[dim_stores] as s
+on s.store_id= f.store_id
+group by s.store_id,s.city
+order by IR desc;
+
+##6 Which are the top 10 stores in terms of Incremental Revenue(IR) generated from their promotions?
+select top (10)
+s.store_id,
+s.city,
+(sum( f.[quantity_sold(after_promo)])- sum(f.[quantity_sold(before_promo)]) ) as ISU_per
+from [dbo].[fact_events] as f
+join  [dbo].[dim_stores] as s
+on s.store_id= f.store_id
+group by s.store_id,s.city
+order by ISU_per ;
+
+##7 What are the top 2 promotion types that resulted in the highest Incremental Revenue?
+select top (2) f.promo_type,
+(sum (f.base_price * f.[quantity_sold(after_promo)])-sum( f.base_price * f.[quantity_sold(before_promo)]))/1000000  as IR
+from [dbo].[fact_events] as f
+group by f.promo_type
+order by IR desc;
+
+##8 What are the bottom 2 promotion types in the terms of their impact on Incremental Solid Units?
+select top (2) f.promo_type,
+(sum( f.[quantity_sold(after_promo)])- sum(f.[quantity_sold(before_promo)]) ) as ISU_PER
+from [dbo].[fact_events] as f
+group by f.promo_type
+order by  ISU_PER;
+
+##9 Which product categories saw the most significant lift in sales from the promotions?
+select top (2)
+d.category, sum(f.[quantity_sold(after_promo)]) as Top_sales_after_promo
+from [dbo].[fact_events] as f
+join  [dbo].[dim_products] as d
+on f.product_code=d.product_code
+group by d.category
+order by top_sales_after_promo desc;
