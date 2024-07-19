@@ -37,7 +37,16 @@ select *, dense_rank( ) over( order by ISU_per desc) as ranking
 from cte 
 
 ##5 Create a report featuring the Top 5 products, ranked by Incremental Revenue Percentage(IR%) across all campaigns.
-select top (5) with ties s.store_id, s.city,
+select top (5) with ties p.product_name,p.category,
+((sum (f.base_price * f.[quantity_sold(after_promo)])-sum( f.base_price * f.[quantity_sold(before_promo)]))/sum( f.base_price * f.[quantity_sold(before_promo)]) )*100   as IR_PER
+from [dbo].[fact_events] as f
+join [dbo].[dim_products] as p
+on f.product_code=p.product_code
+group by p.product_name,p.category
+order by IR_PER desc;
+
+##6 Which are the top 10 stores in terms of Incremental Revenue(IR) generated from their promotions?
+select top (10) with ties s.store_id, s.city,
 (sum (f.base_price * f.[quantity_sold(after_promo)])-sum( f.base_price * f.[quantity_sold(before_promo)]))   as IR
 from [dbo].[fact_events] as f
 join [dbo].[dim_stores] as s
@@ -45,32 +54,32 @@ on s.store_id= f.store_id
 group by s.store_id,s.city
 order by IR desc;
 
-##6 Which are the top 10 stores in terms of Incremental Revenue(IR) generated from their promotions?
+##7Which are the bottom 10 stores when it comes to Incremental Sold Units(ISU) during the promotional period ?
 select top (10)
 s.store_id,
 s.city,
-(sum( f.[quantity_sold(after_promo)])- sum(f.[quantity_sold(before_promo)]) ) as ISU_per
+(sum( f.[quantity_sold(after_promo)])- sum(f.[quantity_sold(before_promo)]) ) as ISU
 from [dbo].[fact_events] as f
 join  [dbo].[dim_stores] as s
 on s.store_id= f.store_id
 group by s.store_id,s.city
-order by ISU_per ;
+order by ISU ;
 
-##7 What are the top 2 promotion types that resulted in the highest Incremental Revenue?
+##8 What are the top 2 promotion types that resulted in the highest Incremental Revenue?
 select top (2) f.promo_type,
 (sum (f.base_price * f.[quantity_sold(after_promo)])-sum( f.base_price * f.[quantity_sold(before_promo)]))/1000000  as IR
 from [dbo].[fact_events] as f
 group by f.promo_type
 order by IR desc;
 
-##8 What are the bottom 2 promotion types in the terms of their impact on Incremental Solid Units?
+##9 What are the bottom 2 promotion types in the terms of their impact on Incremental Solid Units?
 select top (2) f.promo_type,
-(sum( f.[quantity_sold(after_promo)])- sum(f.[quantity_sold(before_promo)]) ) as ISU_PER
+(sum( f.[quantity_sold(after_promo)])- sum(f.[quantity_sold(before_promo)]) ) as ISU
 from [dbo].[fact_events] as f
 group by f.promo_type
-order by  ISU_PER;
+order by  ISU;
 
-##9 Which product categories saw the most significant lift in sales from the promotions?
+##10 Which product categories saw the most significant lift in sales from the promotions?
 select top (2)
 d.category, sum(f.[quantity_sold(after_promo)]) as Top_sales_after_promo
 from [dbo].[fact_events] as f
